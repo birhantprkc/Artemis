@@ -28,6 +28,7 @@ import {
     PACKAGE_NAME_PATTERN_FOR_GO,
     PACKAGE_NAME_PATTERN_FOR_JAVA_BLACKBOX,
     PACKAGE_NAME_PATTERN_FOR_JAVA_KOTLIN,
+    POINTS_PATTERN,
     PROGRAMMING_EXERCISE_SHORT_NAME_PATTERN,
 } from 'app/foundation/constants/input.constants';
 import { ExerciseCategory } from 'app/exercise/shared/entities/exercise/exercise-category.model';
@@ -117,6 +118,7 @@ export class ProgrammingExerciseUpdateComponent implements AfterViewInit, OnDest
     private readonly packageNameRegexForDart = RegExp(PACKAGE_NAME_PATTERN_FOR_DART);
     protected readonly documentationType: DocumentationType = 'Programming';
     protected readonly maxPenaltyPattern = MAX_PENALTY_PATTERN;
+    private readonly pointsPattern = POINTS_PATTERN;
     protected readonly invalidRepositoryNamePattern = INVALID_REPOSITORY_NAME_PATTERN;
     protected readonly invalidDirectoryNamePattern = INVALID_DIRECTORY_NAME_PATTERN;
     protected readonly shortNamePattern = PROGRAMMING_EXERCISE_SHORT_NAME_PATTERN;
@@ -1385,6 +1387,11 @@ export class ProgrammingExerciseUpdateComponent implements AfterViewInit, OnDest
                     translateKey: 'artemisApp.exercise.form.points.customMax',
                     translateValues: {},
                 });
+            } else if (!this.programmingExercise.maxPoints.toString().match(this.pointsPattern)) {
+                validationErrorReasons.push({
+                    translateKey: 'artemisApp.exercise.form.points.pattern',
+                    translateValues: {},
+                });
             }
             return;
         }
@@ -1404,6 +1411,11 @@ export class ProgrammingExerciseUpdateComponent implements AfterViewInit, OnDest
                 translateKey: 'artemisApp.exercise.form.points.customMax',
                 translateValues: {},
             });
+        } else if (!this.programmingExercise.maxPoints.toString().match(this.pointsPattern)) {
+            validationErrorReasons.push({
+                translateKey: 'artemisApp.exercise.form.points.pattern',
+                translateValues: {},
+            });
         }
     }
 
@@ -1421,6 +1433,11 @@ export class ProgrammingExerciseUpdateComponent implements AfterViewInit, OnDest
         } else if (this.programmingExercise.bonusPoints > 9999) {
             validationErrorReasons.push({
                 translateKey: 'artemisApp.exercise.form.bonusPoints.customMax',
+                translateValues: {},
+            });
+        } else if (!this.programmingExercise.bonusPoints.toString().match(this.pointsPattern)) {
+            validationErrorReasons.push({
+                translateKey: 'artemisApp.exercise.form.bonusPoints.pattern',
                 translateValues: {},
             });
         }
