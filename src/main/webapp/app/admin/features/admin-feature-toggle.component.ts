@@ -9,11 +9,7 @@ import { faExternalLinkAlt } from '@fortawesome/free-solid-svg-icons';
 import { FaIconComponent } from '@fortawesome/angular-fontawesome';
 import { TranslateDirective } from 'app/foundation/language/translate.directive';
 import { ArtemisTranslatePipe } from 'app/foundation/pipes/artemis-translate.pipe';
-import { ToggleSwitchModule } from 'primeng/toggleswitch';
-import { TumUiButtonComponent } from 'app/shared-ui/tum-ui/button/tum-ui-button.component';
-import { TumUiTagComponent } from 'app/shared-ui/tum-ui/tag/tum-ui-tag.component';
-import { TumUiTooltipDirective } from 'app/shared-ui/tum-ui/tooltip/tum-ui-tooltip.directive';
-import { MessageModule } from 'primeng/message';
+import { TumUiButtonComponent, TumUiMessageComponent, TumUiTagComponent, TumUiToggleSwitchComponent, TumUiTooltipDirective } from '@tumaet/ui-angular';
 import { AdminTitleBarTitleDirective } from 'app/admin/shared/admin-title-bar-title.directive';
 import { AdminTitleBarActionsDirective } from 'app/admin/shared/admin-title-bar-actions.directive';
 import { ProfileService } from 'app/core/layouts/profiles/shared/profile.service';
@@ -74,8 +70,8 @@ type ModuleFeatureInfo = {
         FaIconComponent,
         TranslateDirective,
         ArtemisTranslatePipe,
-        ToggleSwitchModule,
-        MessageModule,
+        TumUiToggleSwitchComponent,
+        TumUiMessageComponent,
         FormsModule,
         AdminTitleBarTitleDirective,
         AdminTitleBarActionsDirective,
