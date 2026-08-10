@@ -51,13 +51,15 @@ public class OIDCAuthenticationSuccessHandler implements AuthenticationSuccessHa
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response, Authentication authentication) throws IOException, ServletException {
         boolean rememberMe = false;
+        String redirectTarget = null;
         HttpSession session = request.getSession(false);
         if (session != null) {
-            // Extract stored rememberMe field from session
+            // Extract stored rememberMe and redirect parameters from session
             Boolean storedRememberMe = (Boolean) session.getAttribute("OIDC_REMEMBER_ME");
             if (storedRememberMe != null) {
                 rememberMe = storedRememberMe;
             }
+            redirectTarget = (String) session.getAttribute("OIDC_REDIRECT");
         }
         OidcUser oidcUser = (OidcUser) authentication.getPrincipal();
         String username = oidcUser.getAttribute(usernameClaimKey);
@@ -84,8 +86,18 @@ public class OIDCAuthenticationSuccessHandler implements AuthenticationSuccessHa
         if (session != null) {
             session.invalidate();
         }
+        // Handle redirect based on parameter
+        if ("vscode".equalsIgnoreCase(redirectTarget)) {
+            // Extract jwt
+            String jwtToken = jwtCookie.getValue();
+            // Create deep link for jwt token
+            String vscodeDeepLink = "vscode://aet-tum.iris-thaumantias/auth-callback?token=" + jwtToken;
 
-        // Redirect user to /courses page
-        response.sendRedirect("/");
+            response.sendRedirect(vscodeDeepLink);
+        }
+        else {
+            // Standard web login redirect
+            response.sendRedirect("/");
+        }
     }
 }

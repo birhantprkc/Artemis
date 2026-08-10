@@ -107,13 +107,19 @@ public class OIDCConfiguration {
     protected SecurityFilterChain oidcFilterChain(final HttpSecurity http) throws Exception {
         var resolver = new DefaultOAuth2AuthorizationRequestResolver(clientRegistrationRepository(), "/oauth2/authorization");
 
-        // Extract rememberMe field from query and store it into session
+        // Extract rememberMe & redirect field parameters query and store it into session
         resolver.setAuthorizationRequestCustomizer(builder -> {
             // Get current request
             var attrs = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
             if (attrs != null) {
                 var req = attrs.getRequest();
-                req.getSession(true).setAttribute("OIDC_REMEMBER_ME", "true".equalsIgnoreCase(req.getParameter("rememberMe")));
+                var session = req.getSession(true);
+                session.setAttribute("OIDC_REMEMBER_ME", "true".equalsIgnoreCase(req.getParameter("rememberMe")));
+
+                String redirectTarget = req.getParameter("redirect");
+                if (redirectTarget != null && !redirectTarget.isBlank()) {
+                    session.setAttribute("OIDC_REDIRECT", redirectTarget);
+                }
             }
         });
         // @formatter:off

@@ -41,16 +41,21 @@ public class OIDCAuthenticationFailureHandler implements AuthenticationFailureHa
     @Override
     public void onAuthenticationFailure(HttpServletRequest request, HttpServletResponse response, AuthenticationException exception) throws IOException, ServletException {
         log.error("OIDC authentication failed: {}", exception.getMessage(), exception);
+        String redirectTarget = null;
+        HttpSession session = request.getSession(false);
+        if (session != null) {
+            redirectTarget = (String) session.getAttribute("OIDC_REDIRECT");
+            session.invalidate();
+        }
         // If user is not validated
-        if (exception instanceof OAuth2AuthenticationException oauth2Exception && "user_deactivated".equals(oauth2Exception.getError().getErrorCode())) {
-            HttpSession session = request.getSession(false);
-            if (session != null) {
-                session.invalidate();
-            }
-            response.sendRedirect("/sign-in?loginError=deactivated");
+        boolean isDeactivated = exception instanceof OAuth2AuthenticationException oauth2Exception && "user_deactivated".equals(oauth2Exception.getError().getErrorCode());
+        String errorCode = isDeactivated ? "deactivated" : "oidcFailure";
+
+        if ("vscode".equalsIgnoreCase(redirectTarget)) {
+            response.sendRedirect("vscode://ls1intum.artemis-vscode/auth-callback?error=" + errorCode);
         }
         else {
-            response.sendRedirect("/sign-in?loginError=oidcFailure");
+            response.sendRedirect("/sign-in?loginError=" + errorCode);
         }
     }
 }
