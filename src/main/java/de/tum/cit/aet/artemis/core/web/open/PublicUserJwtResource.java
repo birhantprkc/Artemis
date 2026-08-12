@@ -64,7 +64,7 @@ public class PublicUserJwtResource {
 
     private final JWTCookieService jwtCookieService;
 
-    private final OIDCExchangeCodeService oidcExchangeCodeService;
+    private final Optional<OIDCExchangeCodeService> oidcExchangeCodeService;
 
     private final AuthenticationManager authenticationManager;
 
@@ -73,7 +73,7 @@ public class PublicUserJwtResource {
     private final Optional<SAML2Service> saml2Service;
 
     public PublicUserJwtResource(JWTCookieService jwtCookieService, AuthenticationManager authenticationManager, ArtemisSuccessfulLoginService artemisSuccessfulLoginService,
-            Optional<SAML2Service> saml2Service, OIDCExchangeCodeService oidcExchangeCodeService) {
+            Optional<SAML2Service> saml2Service, Optional<OIDCExchangeCodeService> oidcExchangeCodeService) {
         this.jwtCookieService = jwtCookieService;
         this.oidcExchangeCodeService = oidcExchangeCodeService;
         this.authenticationManager = authenticationManager;
@@ -186,7 +186,11 @@ public class PublicUserJwtResource {
     @GetMapping("exchange-code")
     @EnforceNothing
     public ResponseEntity<String> exchangeCodeToJwtToken(@RequestParam("code") String exchangeCode) {
-        String jwtToken = oidcExchangeCodeService.redeemCode(exchangeCode);
+        if (oidcExchangeCodeService.isEmpty()) {
+            // Since oidc is not enabled, no jwt token was found
+            return ResponseEntity.notFound().build();
+        }
+        String jwtToken = oidcExchangeCodeService.get().redeemCode(exchangeCode);
         if (jwtToken == null || jwtToken.isEmpty()) {
             return ResponseEntity.notFound().build();
         }
