@@ -120,6 +120,9 @@ public class OIDCConfiguration {
                 if (redirectTarget != null && !redirectTarget.isBlank()) {
                     session.setAttribute("OIDC_REDIRECT", redirectTarget);
                 }
+                else {
+                    session.removeAttribute("OIDC_REDIRECT");
+                }
             }
         });
         // @formatter:off
