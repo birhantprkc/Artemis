@@ -183,6 +183,12 @@ public class PublicUserJwtResource {
         return ResponseEntity.ok().build();
     }
 
+    /**
+     * GET exchange-code : Exchanges a single-use OIDC code for a JWT authentication token.
+     *
+     * @param exchangeCode The single-use code issued during the OIDC login flow.
+     * @return ResponseEntity with the JWT token as plain text, or 404 (Not Found) if OIDC is disabled or the code is invalid.
+     */
     @GetMapping("exchange-code")
     @EnforceNothing
     public ResponseEntity<String> exchangeCodeToJwtToken(@RequestParam("code") String exchangeCode) {

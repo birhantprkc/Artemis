@@ -39,6 +39,7 @@ public class OIDCExchangeCodeService {
      * Exchamge the code to obtain the jwtToken
      *
      * @param code The single use token which is exchanged to jwtToken
+     * @return the jwt token from the code
      */
     public String redeemCode(String code) {
         if (code == null || code.isBlank()) {
