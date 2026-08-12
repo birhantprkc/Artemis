@@ -34,6 +34,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 import de.tum.cit.aet.artemis.account.domain.User;
 import de.tum.cit.aet.artemis.account.security.OIDCAuthenticationFailureHandler;
 import de.tum.cit.aet.artemis.account.security.OIDCAuthenticationSuccessHandler;
+import de.tum.cit.aet.artemis.account.security.OIDCExchangeCodeService;
 import de.tum.cit.aet.artemis.account.security.OIDCService;
 import de.tum.cit.aet.artemis.account.service.ArtemisSuccessfulLoginService;
 import de.tum.cit.aet.artemis.account.service.ldap.LdapUserDto;
@@ -70,6 +71,8 @@ class UserOIDCIntegrationTest extends AbstractSpringIntegrationLocalVCSamlTest {
 
     private OIDCService oidcService;
 
+    private OIDCExchangeCodeService oidcExchangeCodeService;
+
     private OIDCAuthenticationSuccessHandler successHandler;
 
     private OIDCAuthenticationFailureHandler failureHandler;
@@ -79,6 +82,7 @@ class UserOIDCIntegrationTest extends AbstractSpringIntegrationLocalVCSamlTest {
     @BeforeEach
     void initManualMocks() {
         ldapUserServiceMock = mock(LdapUserService.class);
+        oidcExchangeCodeService = mock(OIDCExchangeCodeService.class);
         oidcService = new OIDCService(userTestRepository, userCreationService, Optional.of(ldapUserServiceMock));
 
         ReflectionTestUtils.setField(oidcService, "usernameClaimKey", "preferred_username");
@@ -87,7 +91,7 @@ class UserOIDCIntegrationTest extends AbstractSpringIntegrationLocalVCSamlTest {
         ReflectionTestUtils.setField(oidcService, "lastNameClaimKey", "family_name");
         ReflectionTestUtils.setField(oidcService, "emailClaimKey", "email");
 
-        successHandler = new OIDCAuthenticationSuccessHandler(jwtCookieService, userTestRepository, artemisSuccessfulLoginService);
+        successHandler = new OIDCAuthenticationSuccessHandler(jwtCookieService, userTestRepository, artemisSuccessfulLoginService, oidcExchangeCodeService);
         failureHandler = new OIDCAuthenticationFailureHandler();
         ReflectionTestUtils.setField(successHandler, "usernameClaimKey", "preferred_username");
     }

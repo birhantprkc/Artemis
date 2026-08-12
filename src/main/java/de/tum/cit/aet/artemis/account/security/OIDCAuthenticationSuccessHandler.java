@@ -35,6 +35,8 @@ public class OIDCAuthenticationSuccessHandler implements AuthenticationSuccessHa
 
     private final JWTCookieService jwtCookieService;
 
+    private final OIDCExchangeCodeService oidcExchangeCodeService;
+
     private final UserRepository userRepository;
 
     private final ArtemisSuccessfulLoginService artemisSuccessfulLoginService;
@@ -42,8 +44,10 @@ public class OIDCAuthenticationSuccessHandler implements AuthenticationSuccessHa
     @Value("${artemis.user-management.oidc.mappings.username:preferred_username}")
     private String usernameClaimKey;
 
-    public OIDCAuthenticationSuccessHandler(JWTCookieService jwtCookieService, UserRepository userRepository, ArtemisSuccessfulLoginService artemisSuccessfulLoginService) {
+    public OIDCAuthenticationSuccessHandler(JWTCookieService jwtCookieService, UserRepository userRepository, ArtemisSuccessfulLoginService artemisSuccessfulLoginService,
+            OIDCExchangeCodeService oidcExchangeCodeService) {
         this.jwtCookieService = jwtCookieService;
+        this.oidcExchangeCodeService = oidcExchangeCodeService;
         this.userRepository = userRepository;
         this.artemisSuccessfulLoginService = artemisSuccessfulLoginService;
     }
@@ -86,12 +90,17 @@ public class OIDCAuthenticationSuccessHandler implements AuthenticationSuccessHa
         if (session != null) {
             session.invalidate();
         }
-        // Handle redirect based on parameter
-        if ("vscode".equalsIgnoreCase(redirectTarget)) {
+        String exchangeCode = null;
+        // Generate the exchange code only if redirect for external client is needed
+        if (redirectTarget != null) {
             // Extract jwt
             String jwtToken = jwtCookie.getValue();
-            // Create deep link for jwt token
-            String vscodeDeepLink = "vscode://aet-tum.iris-thaumantias/auth-callback?token=" + jwtToken;
+            exchangeCode = oidcExchangeCodeService.storeJwtAndGenerateCode(jwtToken);
+        }
+        // Handle redirect based on parameter
+        if ("vscode".equalsIgnoreCase(redirectTarget)) {
+            // Create deep link for exchange code
+            String vscodeDeepLink = "vscode://aet-tum.iris-thaumantias/auth-callback?code=" + exchangeCode;
 
             response.sendRedirect(vscodeDeepLink);
         }

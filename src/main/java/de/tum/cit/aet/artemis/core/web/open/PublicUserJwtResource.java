@@ -28,6 +28,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.saml2.provider.service.authentication.Saml2AuthenticatedPrincipal;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -36,6 +37,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import de.tum.cit.aet.artemis.account.exception.UserNotActivatedException;
+import de.tum.cit.aet.artemis.account.security.OIDCExchangeCodeService;
 import de.tum.cit.aet.artemis.account.security.SAML2Service;
 import de.tum.cit.aet.artemis.account.service.ArtemisSuccessfulLoginService;
 import de.tum.cit.aet.artemis.core.dto.vm.LoginVM;
@@ -62,6 +64,8 @@ public class PublicUserJwtResource {
 
     private final JWTCookieService jwtCookieService;
 
+    private final OIDCExchangeCodeService oidcExchangeCodeService;
+
     private final AuthenticationManager authenticationManager;
 
     private final ArtemisSuccessfulLoginService artemisSuccessfulLoginService;
@@ -69,8 +73,9 @@ public class PublicUserJwtResource {
     private final Optional<SAML2Service> saml2Service;
 
     public PublicUserJwtResource(JWTCookieService jwtCookieService, AuthenticationManager authenticationManager, ArtemisSuccessfulLoginService artemisSuccessfulLoginService,
-            Optional<SAML2Service> saml2Service) {
+            Optional<SAML2Service> saml2Service, OIDCExchangeCodeService oidcExchangeCodeService) {
         this.jwtCookieService = jwtCookieService;
+        this.oidcExchangeCodeService = oidcExchangeCodeService;
         this.authenticationManager = authenticationManager;
         this.artemisSuccessfulLoginService = artemisSuccessfulLoginService;
         this.saml2Service = saml2Service;
@@ -176,6 +181,16 @@ public class PublicUserJwtResource {
         response.addHeader(HttpHeaders.SET_COOKIE, responseCookie.toString());
 
         return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("exchange-code")
+    @EnforceNothing
+    public ResponseEntity<String> exchangeCodeToJwtToken(@RequestParam("code") String exchangeCode) {
+        String jwtToken = oidcExchangeCodeService.redeemCode(exchangeCode);
+        if (jwtToken == null || jwtToken.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(jwtToken);
     }
 
     /**
