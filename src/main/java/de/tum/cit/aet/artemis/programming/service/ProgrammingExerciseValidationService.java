@@ -5,9 +5,6 @@ import static de.tum.cit.aet.artemis.core.config.Constants.MAX_ENVIRONMENT_VARIA
 import static de.tum.cit.aet.artemis.core.config.Constants.MAX_PACKAGE_NAME_LENGTH;
 import static de.tum.cit.aet.artemis.core.config.Constants.PROFILE_CORE;
 
-import java.util.HashSet;
-import java.util.List;
-import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -32,7 +29,6 @@ import de.tum.cit.aet.artemis.localvc.service.vcs.VersionControlService;
 import de.tum.cit.aet.artemis.programming.domain.ProgrammingExercise;
 import de.tum.cit.aet.artemis.programming.domain.ProgrammingExerciseBuildConfig;
 import de.tum.cit.aet.artemis.programming.domain.ProgrammingExerciseTestCase;
-import de.tum.cit.aet.artemis.programming.dto.BuildPhaseDTO;
 import de.tum.cit.aet.artemis.programming.dto.BuildPlanPhasesDTO;
 import de.tum.cit.aet.artemis.programming.exception.ProgrammingExerciseErrorKeys;
 import de.tum.cit.aet.artemis.programming.repository.ProgrammingExerciseRepository;
@@ -313,55 +309,19 @@ public class ProgrammingExerciseValidationService {
             throw new BadRequestAlertException("The build config is invalid", "programmingExercise", "invalidBuildConfig");
         }
 
-        List<BuildPhaseDTO> phases;
+        BuildPlanPhasesDTO buildPlan;
         try {
-            phases = BuildPlanPhasesDTO.fromBuildPlanConfiguration(programmingExercise.getBuildConfig().getBuildPlanConfiguration()).phases();
+            buildPlan = BuildPlanPhasesDTO.fromBuildPlanConfiguration(programmingExercise.getBuildConfig().getBuildPlanConfiguration());
         }
         catch (JsonProcessingException e) {
             throw new BadRequestAlertException("The build plan configuration is invalid", "programmingExercise", "invalidBuildPlanConfiguration");
         }
 
-        if (phases == null) {
+        if (buildPlan.phases() == null && buildPlan.containers() == null) {
             return; // default will be used when saving
         }
 
-        validateBuildPhases(phases);
-    }
-
-    /**
-     * Validates a list of build phases: it must contain at least one phase, every phase name must match the configured
-     * pattern, avoid the reserved names, and be unique case-insensitively, and every phase must carry a non-blank script.
-     * Shared by the full exercise update and the dedicated build plan editor so the same misconfiguration is rejected with
-     * the same error and key on both pages.
-     *
-     * @param phases the build phases to validate
-     */
-    public void validateBuildPhases(List<BuildPhaseDTO> phases) {
-        if (phases == null || phases.isEmpty()) {
-            throw new BadRequestAlertException("Build plan must include at least one phase", "programmingExercise", "noBuildPhases");
-        }
-
-        Set<String> normalizedNames = new HashSet<>();
-        for (BuildPhaseDTO phase : phases) {
-            if (phase == null || phase.name() == null || !BuildPhaseDTO.BUILD_PHASE_NAME_PATTERN.matcher(phase.name()).matches()) {
-                throw new BadRequestAlertException("Invalid build phase name", "programmingExercise", "invalidBuildPhaseName");
-            }
-
-            String normalizedName = phase.name().toLowerCase(Locale.ROOT);
-            if (BuildPhaseDTO.RESERVED_PHASE_NAMES.contains(normalizedName)) {
-                throw new BadRequestAlertException("Invalid build phase name", "programmingExercise", "invalidBuildPhaseName");
-            }
-            if (!normalizedNames.add(normalizedName)) {
-                throw new BadRequestAlertException("Build phase names must be unique", "programmingExercise", "duplicateBuildPhaseNames");
-            }
-
-            // BuildPhaseDTO is serialized with @JsonInclude(NON_EMPTY), so a blank script is dropped from the stored
-            // configuration; the client parser then rejects the whole plan on reopen. Reject it here instead of storing
-            // a phase that silently destroys the plan on the next read.
-            if (phase.script() == null || phase.script().isBlank()) {
-                throw new BadRequestAlertException("A build phase script must not be blank", "programmingExercise", "blankBuildPhaseScript");
-            }
-        }
+        BuildPlanConfigurationValidator.validate(buildPlan);
     }
 
     /**
