@@ -52,7 +52,7 @@ public class OIDCAuthenticationFailureHandler implements AuthenticationFailureHa
         String errorCode = isDeactivated ? "deactivated" : "oidcFailure";
 
         if ("vscode".equalsIgnoreCase(redirectTarget)) {
-            response.sendRedirect("vscode://ls1intum.artemis-vscode/auth-callback?error=" + errorCode);
+            response.sendRedirect("vscode://aet-tum.iris-thaumantias/auth-callback?error=" + errorCode);
         }
         else {
             response.sendRedirect("/sign-in?loginError=" + errorCode);
