@@ -1,6 +1,7 @@
 package de.tum.cit.aet.artemis.account.authentication;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -10,10 +11,13 @@ import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import de.tum.cit.aet.artemis.account.security.OIDCExchangeCodeService;
+import de.tum.cit.aet.artemis.account.service.ArtemisSuccessfulLoginService;
+import de.tum.cit.aet.artemis.core.security.jwt.JWTCookieService;
 import de.tum.cit.aet.artemis.core.web.open.PublicUserJwtResource;
 import de.tum.cit.aet.artemis.shared.base.AbstractSpringIntegrationIndependentTest;
 
@@ -45,9 +49,12 @@ class PublicUserJwtResourceTest extends AbstractSpringIntegrationIndependentTest
     }
 
     @Test
-    void testExchangeCodeToJwtToken_whenOidcDisabled_returnsNotFound() throws Exception {
-        // test the case where no oidc exchange service is enabled
-        PublicUserJwtResource resource = new PublicUserJwtResource(null, null, null, Optional.empty(), Optional.empty());
+    void testExchangeCodeToJwtToken_whenOidcDisabled_returnsNotFound() {
+        JWTCookieService jwtCookieService = mock(JWTCookieService.class);
+        AuthenticationManager authenticationManager = mock(AuthenticationManager.class);
+        ArtemisSuccessfulLoginService artemisSuccessfulLoginService = mock(ArtemisSuccessfulLoginService.class);
+
+        PublicUserJwtResource resource = new PublicUserJwtResource(jwtCookieService, authenticationManager, artemisSuccessfulLoginService, Optional.empty(), Optional.empty());
 
         var response = resource.exchangeCodeToJwtToken("some-code");
         assertThat(response.getStatusCode().value()).isEqualTo(404);
