@@ -30,6 +30,7 @@ class OIDCExchangeCodeServiceTest {
         when(hazelcastInstance.<String, String>getMap("oidcExchangeCodes")).thenReturn(codeToJwtMap);
 
         oidcExchangeCodeService = new OIDCExchangeCodeService(hazelcastInstance);
+        oidcExchangeCodeService.init();
     }
 
     @Test
