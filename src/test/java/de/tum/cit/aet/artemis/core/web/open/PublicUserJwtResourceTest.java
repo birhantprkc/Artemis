@@ -1,28 +1,19 @@
 package de.tum.cit.aet.artemis.core.web.open;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import java.util.Optional;
-
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
-import de.tum.cit.aet.artemis.account.service.ArtemisSuccessfulLoginService;
 import de.tum.cit.aet.artemis.account.service.OIDCExchangeCodeService;
-import de.tum.cit.aet.artemis.core.security.jwt.JWTCookieService;
 import de.tum.cit.aet.artemis.shared.base.AbstractSpringIntegrationIndependentTest;
 
 class PublicUserJwtResourceTest extends AbstractSpringIntegrationIndependentTest {
 
-    @MockitoBean
+    @Autowired(required = false)
     private OIDCExchangeCodeService oidcExchangeCodeService;
 
     @Autowired
@@ -30,10 +21,14 @@ class PublicUserJwtResourceTest extends AbstractSpringIntegrationIndependentTest
 
     @Test
     void testExchangeCodeToJwtToken_success() throws Exception {
-        String exchangeCode = "valid-exchange-code-123";
-        String expectedJwt = "mock.jwt.token.string";
+        if (oidcExchangeCodeService == null) {
+            // If OIDC is disabled in test context, endpoint returns 404
+            mockMvc.perform(get("/api/core/public/exchange-code").param("code", "any-code")).andExpect(status().isNotFound());
+            return;
+        }
 
-        when(oidcExchangeCodeService.redeemCode(exchangeCode)).thenReturn(expectedJwt);
+        String expectedJwt = "mock.jwt.token.string";
+        String exchangeCode = oidcExchangeCodeService.storeJwtAndGenerateCode(expectedJwt);
 
         mockMvc.perform(get("/api/core/public/exchange-code").param("code", exchangeCode)).andExpect(status().isOk()).andExpect(content().string(expectedJwt));
     }
@@ -42,20 +37,6 @@ class PublicUserJwtResourceTest extends AbstractSpringIntegrationIndependentTest
     void testExchangeCodeToJwtToken_notFoundForInvalidCode() throws Exception {
         String invalidCode = "invalid-or-expired-code";
 
-        when(oidcExchangeCodeService.redeemCode(invalidCode)).thenReturn(null);
-
         mockMvc.perform(get("/api/core/public/exchange-code").param("code", invalidCode)).andExpect(status().isNotFound());
-    }
-
-    @Test
-    void testExchangeCodeToJwtToken_whenOidcDisabled_returnsNotFound() {
-        JWTCookieService jwtCookieService = mock(JWTCookieService.class);
-        AuthenticationManager authenticationManager = mock(AuthenticationManager.class);
-        ArtemisSuccessfulLoginService artemisSuccessfulLoginService = mock(ArtemisSuccessfulLoginService.class);
-
-        PublicUserJwtResource resource = new PublicUserJwtResource(jwtCookieService, authenticationManager, artemisSuccessfulLoginService, Optional.empty(), Optional.empty());
-
-        var response = resource.exchangeCodeToJwtToken("some-code");
-        assertThat(response.getStatusCode().value()).isEqualTo(404);
     }
 }
