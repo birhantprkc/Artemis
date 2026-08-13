@@ -1,4 +1,4 @@
-package de.tum.cit.aet.artemis.account.security;
+package de.tum.cit.aet.artemis.account.service;
 
 import java.util.concurrent.TimeUnit;
 
@@ -10,6 +10,7 @@ import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.map.IMap;
 
 import de.tum.cit.aet.artemis.account.config.OIDCEnabled;
+import de.tum.cit.aet.artemis.account.security.RandomUtil;
 
 @Service
 @Lazy

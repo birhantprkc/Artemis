@@ -1,4 +1,4 @@
-package de.tum.cit.aet.artemis.account.authentication;
+package de.tum.cit.aet.artemis.account.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.eq;
@@ -13,8 +13,6 @@ import org.junit.jupiter.api.Test;
 
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.map.IMap;
-
-import de.tum.cit.aet.artemis.account.security.OIDCExchangeCodeService;
 
 class OIDCExchangeCodeServiceTest {
 

@@ -37,9 +37,9 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import de.tum.cit.aet.artemis.account.exception.UserNotActivatedException;
-import de.tum.cit.aet.artemis.account.security.OIDCExchangeCodeService;
 import de.tum.cit.aet.artemis.account.security.SAML2Service;
 import de.tum.cit.aet.artemis.account.service.ArtemisSuccessfulLoginService;
+import de.tum.cit.aet.artemis.account.service.OIDCExchangeCodeService;
 import de.tum.cit.aet.artemis.core.dto.vm.LoginVM;
 import de.tum.cit.aet.artemis.core.exception.AccessForbiddenException;
 import de.tum.cit.aet.artemis.core.security.RateLimitType;

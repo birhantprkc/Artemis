@@ -1,4 +1,4 @@
-package de.tum.cit.aet.artemis.account.authentication;
+package de.tum.cit.aet.artemis.core.web.open;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -15,10 +15,9 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
-import de.tum.cit.aet.artemis.account.security.OIDCExchangeCodeService;
 import de.tum.cit.aet.artemis.account.service.ArtemisSuccessfulLoginService;
+import de.tum.cit.aet.artemis.account.service.OIDCExchangeCodeService;
 import de.tum.cit.aet.artemis.core.security.jwt.JWTCookieService;
-import de.tum.cit.aet.artemis.core.web.open.PublicUserJwtResource;
 import de.tum.cit.aet.artemis.shared.base.AbstractSpringIntegrationIndependentTest;
 
 class PublicUserJwtResourceTest extends AbstractSpringIntegrationIndependentTest {
