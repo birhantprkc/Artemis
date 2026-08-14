@@ -3,6 +3,7 @@ package de.tum.cit.aet.artemis.account.authentication;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -22,11 +23,13 @@ import org.springframework.http.HttpStatus;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.mock.web.MockHttpSession;
+import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
 import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserRequest;
 import org.springframework.security.oauth2.client.registration.ClientRegistration;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.OAuth2AccessToken;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
+import org.springframework.security.oauth2.core.OAuth2Error;
 import org.springframework.security.oauth2.core.oidc.OidcIdToken;
 import org.springframework.security.test.context.TestSecurityContextHolder;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -202,7 +205,7 @@ class UserOIDCIntegrationTest extends AbstractSpringIntegrationLocalVCSamlTest {
 
         var mockUserRequest = createMockUserRequest(createClaimsMap(STUDENT_REGISTRATION_NUMBER, "FirstName", "LastName"));
         var oidcUser = oidcService.loadUser(mockUserRequest);
-        var auth = new org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken(oidcUser, oidcUser.getAuthorities(), "oidc");
+        var auth = new OAuth2AuthenticationToken(oidcUser, oidcUser.getAuthorities(), "oidc");
 
         successHandler.onAuthenticationSuccess(request, response, auth);
 
@@ -227,7 +230,7 @@ class UserOIDCIntegrationTest extends AbstractSpringIntegrationLocalVCSamlTest {
 
         var mockUserRequest = createMockUserRequest(createClaimsMap(STUDENT_REGISTRATION_NUMBER, "FirstName", "LastName"));
         var oidcUser = oidcService.loadUser(mockUserRequest);
-        var auth = new org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken(oidcUser, oidcUser.getAuthorities(), "oidc");
+        var auth = new OAuth2AuthenticationToken(oidcUser, oidcUser.getAuthorities(), "oidc");
 
         successHandler.onAuthenticationSuccess(request, response, auth);
 
@@ -235,6 +238,31 @@ class UserOIDCIntegrationTest extends AbstractSpringIntegrationLocalVCSamlTest {
         assertThat(cookieHeader).isNotNull();
         // Verify that cookie is shortTerm (1 day)
         assertThat(cookieHeader).contains("Max-Age=86400");
+    }
+
+    @Test
+    void testOidcLogin_withRedirectVsCode_generatesExchangeCodeAndRedirectsToVsCode() throws Exception {
+        assertStudentNotExists();
+        createUser(STUDENT_NAME + "@artemis.local");
+
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute("OIDC_REDIRECT", "vscode");
+        request.setSession(session);
+
+        String expectedCode = "mock-exchange-code-123";
+        when(oidcExchangeCodeService.storeJwtAndGenerateCode(anyString())).thenReturn(expectedCode);
+
+        var mockUserRequest = createMockUserRequest(createClaimsMap(STUDENT_REGISTRATION_NUMBER, "FirstName", "LastName"));
+        var oidcUser = oidcService.loadUser(mockUserRequest);
+        var auth = new OAuth2AuthenticationToken(oidcUser, oidcUser.getAuthorities(), "oidc");
+
+        successHandler.onAuthenticationSuccess(request, response, auth);
+
+        assertThat(response.getRedirectedUrl()).isEqualTo("vscode://aet-tum.iris-thaumantias/auth-callback?code=" + expectedCode);
+        verify(oidcExchangeCodeService, times(1)).storeJwtAndGenerateCode(anyString());
     }
 
     @Test
@@ -272,7 +300,7 @@ class UserOIDCIntegrationTest extends AbstractSpringIntegrationLocalVCSamlTest {
     void testOidcFailureHandler_withDeactivatedUserException_redirectsToDeactivatedError() throws Exception {
         MockHttpServletRequest request = new MockHttpServletRequest();
         MockHttpServletResponse response = new MockHttpServletResponse();
-        OAuth2AuthenticationException exception = new OAuth2AuthenticationException(new org.springframework.security.oauth2.core.OAuth2Error("user_deactivated"), "Deactivated");
+        OAuth2AuthenticationException exception = new OAuth2AuthenticationException(new OAuth2Error("user_deactivated"), "Deactivated");
 
         failureHandler.onAuthenticationFailure(request, response, exception);
 
@@ -284,12 +312,44 @@ class UserOIDCIntegrationTest extends AbstractSpringIntegrationLocalVCSamlTest {
     void testOidcFailureHandler_withGenericException_redirectsToGenericOidcError() throws Exception {
         MockHttpServletRequest request = new MockHttpServletRequest();
         MockHttpServletResponse response = new MockHttpServletResponse();
-        OAuth2AuthenticationException exception = new OAuth2AuthenticationException(new org.springframework.security.oauth2.core.OAuth2Error("invalid_issuer"), "Wrong Issuer");
+        OAuth2AuthenticationException exception = new OAuth2AuthenticationException(new OAuth2Error("invalid_issuer"), "Wrong Issuer");
 
         failureHandler.onAuthenticationFailure(request, response, exception);
 
         // Verify the default error redirect
         assertThat(response.getRedirectedUrl()).isEqualTo("/sign-in?loginError=oidcFailure");
+    }
+
+    @Test
+    void testOidcFailureHandler_withRedirectVsCode_deactivatedUser_redirectsToVsCodeWithError() throws Exception {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute("OIDC_REDIRECT", "vscode");
+        request.setSession(session);
+
+        OAuth2AuthenticationException exception = new OAuth2AuthenticationException(new OAuth2Error("user_deactivated"), "Deactivated");
+
+        failureHandler.onAuthenticationFailure(request, response, exception);
+
+        assertThat(response.getRedirectedUrl()).isEqualTo("vscode://aet-tum.iris-thaumantias/auth-callback?error=deactivated");
+    }
+
+    @Test
+    void testOidcFailureHandler_withRedirectVsCode_genericError_redirectsToVsCodeWithError() throws Exception {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute("OIDC_REDIRECT", "vscode");
+        request.setSession(session);
+
+        OAuth2AuthenticationException exception = new OAuth2AuthenticationException(new OAuth2Error("invalid_issuer"), "Wrong Issuer");
+
+        failureHandler.onAuthenticationFailure(request, response, exception);
+
+        assertThat(response.getRedirectedUrl()).isEqualTo("vscode://aet-tum.iris-thaumantias/auth-callback?error=oidcFailure");
     }
 
     private OidcUserRequest createMockUserRequest(Map<String, Object> claims) {
