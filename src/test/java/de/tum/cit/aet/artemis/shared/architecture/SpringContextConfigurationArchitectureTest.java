@@ -35,6 +35,7 @@ import de.tum.cit.aet.artemis.shared.base.AbstractSpringIntegrationJenkinsLocalV
 import de.tum.cit.aet.artemis.shared.base.AbstractSpringIntegrationJenkinsLocalVCTestBase;
 import de.tum.cit.aet.artemis.shared.base.AbstractSpringIntegrationLocalCILocalVCTest;
 import de.tum.cit.aet.artemis.shared.base.AbstractSpringIntegrationLocalVCSamlTest;
+import de.tum.cit.aet.artemis.shared.base.AbstractSpringIntegrationOidcTest;
 
 /**
  * Architecture tests to ensure Spring context configuration is only defined in allowed base test classes.
@@ -66,6 +67,8 @@ class SpringContextConfigurationArchitectureTest extends AbstractArchitectureTes
             AbstractSpringIntegrationLocalCILocalVCTest.class,
             // LocalVC with SAML authentication tests
             AbstractSpringIntegrationLocalVCSamlTest.class,
+            // OIDC authentication tests
+            AbstractSpringIntegrationOidcTest.class,
             // Build agent tests
             AbstractArtemisBuildAgentTest.class };
 
