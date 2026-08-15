@@ -13,16 +13,19 @@ import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.mock.web.MockHttpSession;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
 import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserRequest;
 import org.springframework.security.oauth2.client.registration.ClientRegistration;
@@ -31,6 +34,8 @@ import org.springframework.security.oauth2.core.OAuth2AccessToken;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.security.oauth2.core.OAuth2Error;
 import org.springframework.security.oauth2.core.oidc.OidcIdToken;
+import org.springframework.security.oauth2.core.oidc.user.DefaultOidcUser;
+import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.security.test.context.TestSecurityContextHolder;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -198,7 +203,6 @@ class UserOIDCIntegrationTest extends AbstractSpringIntegrationLocalVCSamlTest {
         MockHttpServletRequest request = new MockHttpServletRequest();
         MockHttpServletResponse response = new MockHttpServletResponse();
 
-        // Put rememberMe to true
         MockHttpSession session = new MockHttpSession();
         session.setAttribute("OIDC_REMEMBER_ME", true);
         request.setSession(session);
@@ -211,8 +215,8 @@ class UserOIDCIntegrationTest extends AbstractSpringIntegrationLocalVCSamlTest {
 
         String cookieHeader = response.getHeader(HttpHeaders.SET_COOKIE);
         assertThat(cookieHeader).isNotNull();
-        // Verify that cookie is longterm (1 month)
         assertThat(cookieHeader).contains("Max-Age=2592000");
+        assertThat(session.isInvalid()).isTrue();
     }
 
     @Test
@@ -223,7 +227,6 @@ class UserOIDCIntegrationTest extends AbstractSpringIntegrationLocalVCSamlTest {
         MockHttpServletRequest request = new MockHttpServletRequest();
         MockHttpServletResponse response = new MockHttpServletResponse();
 
-        // Put rememberMe to false
         MockHttpSession session = new MockHttpSession();
         session.setAttribute("OIDC_REMEMBER_ME", false);
         request.setSession(session);
@@ -236,8 +239,8 @@ class UserOIDCIntegrationTest extends AbstractSpringIntegrationLocalVCSamlTest {
 
         String cookieHeader = response.getHeader(HttpHeaders.SET_COOKIE);
         assertThat(cookieHeader).isNotNull();
-        // Verify that cookie is shortTerm (1 day)
         assertThat(cookieHeader).contains("Max-Age=86400");
+        assertThat(session.isInvalid()).isTrue();
     }
 
     @Test
@@ -255,14 +258,26 @@ class UserOIDCIntegrationTest extends AbstractSpringIntegrationLocalVCSamlTest {
         String expectedCode = "mock-exchange-code-123";
         when(oidcExchangeCodeService.storeJwtAndGenerateCode(anyString())).thenReturn(expectedCode);
 
-        var mockUserRequest = createMockUserRequest(createClaimsMap(STUDENT_REGISTRATION_NUMBER, "FirstName", "LastName"));
-        var oidcUser = oidcService.loadUser(mockUserRequest);
+        // Construct OidcUser directly to keep the handler test focused
+        Map<String, Object> claims = createClaimsMap(STUDENT_REGISTRATION_NUMBER, "FirstName", "LastName");
+        OidcIdToken idToken = new OidcIdToken("mock-raw-id-token-string", Instant.now(), Instant.now().plusSeconds(3600), claims);
+        OidcUser oidcUser = new DefaultOidcUser(Set.of(new SimpleGrantedAuthority("ROLE_USER")), idToken, "preferred_username");
         var auth = new OAuth2AuthenticationToken(oidcUser, oidcUser.getAuthorities(), "oidc");
 
         successHandler.onAuthenticationSuccess(request, response, auth);
 
+        // 1. Verify redirect URL
         assertThat(response.getRedirectedUrl()).isEqualTo("vscode://aet-tum.iris-thaumantias/auth-callback?code=" + expectedCode);
-        verify(oidcExchangeCodeService, times(1)).storeJwtAndGenerateCode(anyString());
+
+        // 2. Verify exact JWT token passed to exchange-code service matches the cookie
+        ArgumentCaptor<String> jwtCaptor = ArgumentCaptor.forClass(String.class);
+        verify(oidcExchangeCodeService, times(1)).storeJwtAndGenerateCode(jwtCaptor.capture());
+        String storedJwt = jwtCaptor.getValue();
+        assertThat(storedJwt).isNotNull().isNotBlank();
+        assertThat(response.getHeader(HttpHeaders.SET_COOKIE)).contains(storedJwt);
+
+        // 3. Verify session invalidation
+        assertThat(session.isInvalid()).isTrue();
     }
 
     @Test
@@ -300,24 +315,30 @@ class UserOIDCIntegrationTest extends AbstractSpringIntegrationLocalVCSamlTest {
     void testOidcFailureHandler_withDeactivatedUserException_redirectsToDeactivatedError() throws Exception {
         MockHttpServletRequest request = new MockHttpServletRequest();
         MockHttpServletResponse response = new MockHttpServletResponse();
+        MockHttpSession session = new MockHttpSession();
+        request.setSession(session);
+
         OAuth2AuthenticationException exception = new OAuth2AuthenticationException(new OAuth2Error("user_deactivated"), "Deactivated");
 
         failureHandler.onAuthenticationFailure(request, response, exception);
 
-        // Verify the correct redirect for deactivated user
         assertThat(response.getRedirectedUrl()).isEqualTo("/sign-in?loginError=deactivated");
+        assertThat(session.isInvalid()).isTrue();
     }
 
     @Test
     void testOidcFailureHandler_withGenericException_redirectsToGenericOidcError() throws Exception {
         MockHttpServletRequest request = new MockHttpServletRequest();
         MockHttpServletResponse response = new MockHttpServletResponse();
+        MockHttpSession session = new MockHttpSession();
+        request.setSession(session);
+
         OAuth2AuthenticationException exception = new OAuth2AuthenticationException(new OAuth2Error("invalid_issuer"), "Wrong Issuer");
 
         failureHandler.onAuthenticationFailure(request, response, exception);
 
-        // Verify the default error redirect
         assertThat(response.getRedirectedUrl()).isEqualTo("/sign-in?loginError=oidcFailure");
+        assertThat(session.isInvalid()).isTrue();
     }
 
     @Test
@@ -334,6 +355,7 @@ class UserOIDCIntegrationTest extends AbstractSpringIntegrationLocalVCSamlTest {
         failureHandler.onAuthenticationFailure(request, response, exception);
 
         assertThat(response.getRedirectedUrl()).isEqualTo("vscode://aet-tum.iris-thaumantias/auth-callback?error=deactivated");
+        assertThat(session.isInvalid()).isTrue();
     }
 
     @Test
@@ -350,6 +372,7 @@ class UserOIDCIntegrationTest extends AbstractSpringIntegrationLocalVCSamlTest {
         failureHandler.onAuthenticationFailure(request, response, exception);
 
         assertThat(response.getRedirectedUrl()).isEqualTo("vscode://aet-tum.iris-thaumantias/auth-callback?error=oidcFailure");
+        assertThat(session.isInvalid()).isTrue();
     }
 
     private OidcUserRequest createMockUserRequest(Map<String, Object> claims) {
