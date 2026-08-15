@@ -91,15 +91,11 @@ public class OIDCAuthenticationSuccessHandler implements AuthenticationSuccessHa
         if (session != null) {
             session.invalidate();
         }
-        String exchangeCode = null;
-        // Generate the exchange code only if redirect for external client is needed
-        if (redirectTarget != null) {
-            // Extract jwt
-            String jwtToken = jwtCookie.getValue();
-            exchangeCode = oidcExchangeCodeService.storeJwtAndGenerateCode(jwtToken);
-        }
         // Handle redirect based on parameter
         if ("vscode".equalsIgnoreCase(redirectTarget)) {
+            // Generate the exchange code only if redirect for external client is needed
+            String jwtToken = jwtCookie.getValue();
+            String exchangeCode = oidcExchangeCodeService.storeJwtAndGenerateCode(jwtToken);
             // Create deep link for exchange code
             String vscodeDeepLink = "vscode://aet-tum.iris-thaumantias/auth-callback?code=" + exchangeCode;
 
